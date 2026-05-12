@@ -10,12 +10,12 @@ def receive_messages(client_socket):
             if not data:
                 print("\nСоединение с сервером разорвано.")
                 break
-            message = data.decode('utf-8')
-            # Выводим сообщение, аккуратно вставляя его в консоль
-            print(f"\n[Новое сообщение] {message}")
-            print("> ", end="", flush=True)   # повторяем приглашение ввода
+            message = data.decode('utf-8').rstrip()
+            # Выводим сообщение, не мешая вводу
+            print(f"\n{message}")
+            print("> ", end="", flush=True)
     except:
-        print("Ошибка при получении сообщения.")
+        print("\nОшибка приёма.")
     finally:
         client_socket.close()
         sys.exit(0)
@@ -27,27 +27,29 @@ def main():
     client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     try:
         client.connect((HOST, PORT))
-        print(f"Подключено к чат-серверу {HOST}:{PORT}")
+        print("Подключено к серверу. Введите /login ваше_имя")
     except:
         print("Не удалось подключиться к серверу")
         return
 
-    # Запускаем поток для приёма сообщений
+    # Запускаем поток приёма
     recv_thread = threading.Thread(target=receive_messages, args=(client,))
-    recv_thread.daemon = True   # поток завершится при выходе из main
+    recv_thread.daemon = True
     recv_thread.start()
 
-    # Главный поток занимается отправкой
+    # Главный поток для отправки
     try:
         while True:
-            message = input("> ")
-            if not message:
+            msg = input("> ")
+            if not msg:
                 continue
-            if message.lower() == '/quit':
+            if msg.lower() == '/quit':
+                client.send(b'/logout')
                 break
-            client.send(message.encode('utf-8'))
+            client.send(msg.encode('utf-8'))
     except KeyboardInterrupt:
         print("\nЗавершение клиента...")
+        client.send(b'/logout')
     finally:
         client.close()
 
